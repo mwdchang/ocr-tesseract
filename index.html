@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OCR Test</title>
+<link href="https://fonts.googleapis.com/css?family=Inconsolata&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/1.0.19/tesseract.min.js"></script>
+<style>
+body {
+  font-family: 'Inconsolata', monospace;
+  padding: 10px;
+}
+h4 {
+  margin: 0;
+}
+</style>
+</head>
+<body>
+<h4>Tesseract OCR</h4>
+<p> Paste in image/clipboard here...</p>
+<div style="display:flex; flex-direction: row">
+  <div id="img-container" style="width: 350px; height: 350px; border:1px solid #888">
+  </div>
+  <div id="stat-container" style="margin-left: 10px; width: 350px; height: 350px; overflow-y: scroll; border:1px solid #888">
+  </div>
+</div>
+</body>
+<script>
+
+const worker = Tesseract.create();
+const stat = document.getElementById('stat-container');
+
+function ocr(imgData) {
+  worker.recognize(imgData)
+    .progress(progress => {
+      console.log('progress', progress);
+
+      clear('stat-container');
+      const div = document.createElement('div');
+      div.innerHTML = 'progress: ' + progress.progress;
+      stat.appendChild(div);
+
+    }).then(result => {
+      clear('stat-container');
+      console.log('result', result);
+      const div = document.createElement('div');
+      div.innerHTML = result.text;
+      stat.appendChild(div);
+      stat.appendChild(document.createElement('hr'));
+
+      result.words.forEach(w => {
+        const div = document.createElement('div');
+        div.innerHTML = w.text;
+        stat.appendChild(div);
+      });
+    });
+}
+
+function clear(id) {
+  const myNode = document.getElementById(id);
+  while (myNode.firstChild) {
+    myNode.removeChild(myNode.firstChild);
+  }
+}
+  
+
+// window.addEventListener('paste', ... or
+document.onpaste = function (event) {
+  // use event.originalEvent.clipboard for newer chrome versions
+  var items = (event.clipboardData  || event.originalEvent.clipboardData).items;
+  console.log(JSON.stringify(items)); // will give you the mime types
+  // find pasted image among pasted items
+  var blob = null;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf("image") === 0) {
+      blob = items[i].getAsFile();
+    }
+  }
+  // load image if there is a pasted image
+  if (blob !== null) {
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      console.log(event.target.result); // data url!
+
+      clear('img-container');
+      clear('stat-container');
+
+      const img = document.createElement('img');
+      img.setAttribute('src', event.target.result);
+      img.setAttribute('width', 350);
+      img.setAttribute('height', 350);
+      document.getElementById('img-container').append(img);
+      ocr(img.src);
+    };
+    reader.readAsDataURL(blob);
+  }
+}
+</script>
+</html>
