@@ -18,9 +18,9 @@ h4 {
 <h4>Tesseract OCR</h4>
 <p> Paste in image/clipboard here...</p>
 <div style="display:flex; flex-direction: row">
-  <div id="img-container" style="width: 350px; height: 350px; border:1px solid #888">
+  <div id="img-container" style="width: 450px; height: 450px; border:1px solid #888">
   </div>
-  <div id="stat-container" style="margin-left: 10px; width: 350px; height: 350px; overflow-y: scroll; border:1px solid #888">
+  <div id="stat-container" style="margin-left: 10px; width: 450px; height: 450px; overflow-y: scroll; border:1px solid #888">
   </div>
 </div>
 </body>
@@ -86,8 +86,8 @@ document.onpaste = function (event) {
 
       const img = document.createElement('img');
       img.setAttribute('src', event.target.result);
-      img.setAttribute('width', 350);
-      img.setAttribute('height', 350);
+      img.setAttribute('width', 450);
+      img.setAttribute('height', 450);
       document.getElementById('img-container').append(img);
       ocr(img.src);
     };
