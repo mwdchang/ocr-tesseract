@@ -3,7 +3,10 @@
 <head>
 <title>OCR Test</title>
 <link href="https://fonts.googleapis.com/css?family=Inconsolata&display=swap" rel="stylesheet">
+<!--
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/1.0.19/tesseract.min.js"></script>
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/3.0.2/tesseract.min.js" integrity="sha512-V245eVDwUZJ8QSJmPCsSRJ7btziSNHeGXqjB7e9m3YPTn/pBxPn9YJygW52iBjUe9cHbsGImBnAL7tsAEsUHmQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 body {
   font-family: 'Inconsolata', monospace;
@@ -12,24 +15,65 @@ body {
 h4 {
   margin: 0;
 }
+
+#img-container {
+  border: 1px solid #cccccc;
+}
+
+#stat-container {
+  margin-left: 10px;
+  overflow-y: scroll;
+  border: 1px solid #cccccc;
+}
+
 </style>
 </head>
 <body>
 <h4>Tesseract OCR</h4>
-<p> Paste in image/clipboard here...</p>
+<p> Paste in image/clipboard here to extract text ...</p>
 <div style="display:flex; flex-direction: row">
-  <div id="img-container" style="width: 450px; height: 450px; border:1px solid #888">
-  </div>
-  <div id="stat-container" style="margin-left: 10px; width: 450px; height: 450px; overflow-y: scroll; border:1px solid #888">
-  </div>
+  <div id="img-container"></div>
+  <div id="stat-container"></div>
 </div>
 </body>
-<script>
+<script type="module">
 
-const worker = Tesseract.create();
+const MAX = 450;
+
 const stat = document.getElementById('stat-container');
 
-function ocr(imgData) {
+
+const imgContainer = document.getElementById('img-container');
+imgContainer.style.width = `${MAX}px`;
+imgContainer.style.height = `${MAX}px`;
+
+const statContainer = document.getElementById('stat-container');
+statContainer.style.width = `${MAX}px`;
+statContainer.style.height = `${MAX}px`;
+
+async function ocr(imgData) {
+  const worker = Tesseract.createWorker();
+  await worker.load();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
+
+  const div = document.createElement('div');
+  div.innerHTML = 'OCR working...';
+  stat.appendChild(div);
+
+  let { data: { text } } = await worker.recognize(imgData);
+  await worker.terminate();
+
+  clear('stat-container');
+
+  text = text.replaceAll(/\n/g, '<br>');
+
+  div.innerHTML = text;
+  stat.appendChild(div);
+  stat.appendChild(document.createElement('hr'));
+
+
+/*
   worker.recognize(imgData)
     .progress(progress => {
       console.log('progress', progress);
@@ -47,12 +91,14 @@ function ocr(imgData) {
       stat.appendChild(div);
       stat.appendChild(document.createElement('hr'));
 
-      result.words.forEach(w => {
-        const div = document.createElement('div');
-        div.innerHTML = w.text;
-        stat.appendChild(div);
-      });
+     
+      // result.words.forEach(w => {
+      //   const div = document.createElement('div');
+      //   div.innerHTML = w.text;
+      //   stat.appendChild(div);
+      // });
     });
+    */
 }
 
 function clear(id) {
@@ -61,33 +107,58 @@ function clear(id) {
     myNode.removeChild(myNode.firstChild);
   }
 }
-  
 
+const getClipImageDimension = async (src) => {
+  return new Promise((resolve, reject) => {
+    let img = new Image();
+    img.onload = () => resolve({
+      height: img.height,
+      width: img.width
+    });
+    img.onerror = reject;
+    img.src = src;
+  })
+}
+  
 // window.addEventListener('paste', ... or
-document.onpaste = function (event) {
+document.onpaste = async (event) => {
   // use event.originalEvent.clipboard for newer chrome versions
-  var items = (event.clipboardData  || event.originalEvent.clipboardData).items;
-  console.log(JSON.stringify(items)); // will give you the mime types
+  const items = (event.clipboardData  || event.originalEvent.clipboardData).items;
+  // console.log(JSON.stringify(items)); // will give you the mime types
+
   // find pasted image among pasted items
-  var blob = null;
-  for (var i = 0; i < items.length; i++) {
+  let blob = null;
+
+  for (let i = 0; i < items.length; i++) {
     if (items[i].type.indexOf("image") === 0) {
       blob = items[i].getAsFile();
     }
   }
   // load image if there is a pasted image
   if (blob !== null) {
-    var reader = new FileReader();
-    reader.onload = function(event) {
-      console.log(event.target.result); // data url!
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      // console.log(event.target.result); // data url!
 
       clear('img-container');
       clear('stat-container');
 
+      // Create a temporary image to determine width and height
+      const dim = await getClipImageDimension(event.target.result);
+      let width = MAX;
+      let height = MAX;
+      if (dim.width > dim.height) {
+        width = MAX;
+        height = MAX * dim.height / dim.width;
+      } else {
+        height = MAX;
+        width = MAX * dim.width / dim.height;
+      }
+
       const img = document.createElement('img');
       img.setAttribute('src', event.target.result);
-      img.setAttribute('width', 450);
-      img.setAttribute('height', 450);
+      img.setAttribute('width', width);
+      img.setAttribute('height', height);
       document.getElementById('img-container').append(img);
       ocr(img.src);
     };
