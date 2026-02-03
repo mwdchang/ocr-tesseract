@@ -239,7 +239,6 @@ function captureFrame(videoEl, width = 640, height = 480) {
 
 const video = document.getElementById("preview");
 const countdownEl = document.getElementById("countdown");
-// const result = document.getElementById("result");
 const captureBtn = document.getElementById("camera-btn");
 
 
@@ -248,9 +247,8 @@ captureBtn.onclick = async () => {
   captureBtn.disabled = true;
 
   await countdown(3, countdownEl);
-
   const imgSrc = captureFrame(video);
-  // result.src = image;
+
 
   const img = document.createElement('img');
   img.setAttribute('src', imgSrc);
@@ -261,7 +259,6 @@ captureBtn.onclick = async () => {
   clear('img-container');
   clear('stat-container');
 
-
   document.getElementById('img-container').append(img);
   ocr(img.src);
 
@@ -269,205 +266,6 @@ captureBtn.onclick = async () => {
   captureBtn.disabled = false;
 };
 
-/*
-const cameraInput = document.getElementById('camera-btn');
-cameraInput.addEventListener('click', (event) => {
-  takeWebcamPicture(640, 480, 600, 'environment').then(dataURL => {
-    console.log("Captured image:", dataURL);
-
-    // Display the image
-    const img = document.createElement('img');
-    img.src = dataURL;
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    document.getElementById('img-container').append(img);
-    ocr(img.src);
-
-    // document.body.appendChild(img);
-  }).catch(err => {
-    console.error("Failed to capture image:", err);
-  });
-});
-
-
-async function takeWebcamPicture(
-  width = 640,
-  height = 480,
-  delayMs = 500,
-  facingMode = "environment"  // environment = back, user = front
-) {
-  try {
-    const video = document.createElement('video');
-    video.width = width;
-    video.height = height;
-    video.autoplay = true;
-    video.muted = true;
-    video.playsInline = true;
-    video.style.display = 'none';
-    document.body.appendChild(video);
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width,
-        height,
-        facingMode: { ideal: facingMode }
-      }
-    });
-
-    video.srcObject = stream;
-
-    await new Promise(resolve => video.onloadedmetadata = resolve);
-    await video.play();
-
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext('2d').drawImage(video, 0, 0, width, height);
-
-    stream.getTracks().forEach(track => track.stop());
-    video.remove();
-
-    return canvas.toDataURL('image/png');
-  } catch (err) {
-    throw err;
-  }
-}
-*/
-
-
-/*
-async function takeWebcamPicture(width = 640, height = 480, delayMs = 500) {
-  try {
-    const video = document.createElement('video');
-    video.width = width;
-    video.height = height;
-    video.autoplay = true;
-    video.muted = true;
-    video.playsInline = true;
-    video.style.display = 'none';
-    document.body.appendChild(video);
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width, height }
-    });
-
-    video.srcObject = stream;
-
-    // Wait for metadata
-    await new Promise(resolve => {
-      video.onloadedmetadata = resolve;
-    });
-
-    // Ensure playback actually starts
-    await video.play();
-
-    // Extra delay to allow the camera to produce real frames
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, width, height);
-
-    // Cleanup
-    stream.getTracks().forEach(track => track.stop());
-    video.remove();
-
-    return canvas.toDataURL('image/png');
-  } catch (err) {
-    throw err;
-  }
-}
-*/
-
-
-/*
-async function takeWebcamPicture(width = 640, height = 480) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const video = document.createElement('video');
-      video.width = width;
-      video.height = height;
-      video.autoplay = true;
-      video.style.display = 'none';
-      document.body.appendChild(video);
-
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width, height } });
-      video.srcObject = stream;
-
-      // Wait for video metadata to load
-      await new Promise((res) => video.onloadedmetadata = res);
-
-      // Wait for at least one frame to be available
-      await new Promise((res) => requestAnimationFrame(res));
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-
-      context.drawImage(video, 0, 0, width, height);
-
-      // Stop the webcam
-      stream.getTracks().forEach(track => track.stop());
-      video.remove();
-
-      const dataURL = canvas.toDataURL('image/png');
-      resolve(dataURL);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-*/
-
-
-/*
-async function takeWebcamPicture(width = 640, height = 480) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Create video element (hidden)
-      const video = document.createElement('video');
-      video.width = width;
-      video.height = height;
-      video.autoplay = true;
-      video.style.display = 'none';
-      document.body.appendChild(video);
-
-      // Request webcam access
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width, height } });
-      video.srcObject = stream;
-
-      // Wait for video to load metadata
-      await new Promise((res) => video.onloadedmetadata = res);
-
-      // Create canvas to capture image
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-
-      // Draw the current frame from video
-      context.drawImage(video, 0, 0, width, height);
-
-      // Stop webcam to free resources
-      stream.getTracks().forEach(track => track.stop());
-      video.remove();
-
-      // Return the image as dataURL
-      const dataURL = canvas.toDataURL('image/png');
-      resolve(dataURL);
-
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-*/
 
 /*
 const getClipImageDimension = async (src) => {
