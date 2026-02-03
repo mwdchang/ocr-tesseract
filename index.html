@@ -163,7 +163,7 @@ fileInput.addEventListener('change', (event) => {
 
 const cameraInput = document.getElementById('camera');
 cameraInput.addEventListener('click', (event) => {
-  takeWebcamPicture().then(dataURL => {
+  takeWebcamPicture(640, 480, 600, 'environment').then(dataURL => {
     console.log("Captured image:", dataURL);
 
     // Display the image
@@ -181,6 +181,54 @@ cameraInput.addEventListener('click', (event) => {
 });
 
 
+async function takeWebcamPicture(
+  width = 640,
+  height = 480,
+  delayMs = 500,
+  facingMode = "environment"  // environment = back, user = front
+) {
+  try {
+    const video = document.createElement('video');
+    video.width = width;
+    video.height = height;
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.style.display = 'none';
+    document.body.appendChild(video);
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width,
+        height,
+        facingMode: { ideal: facingMode }
+      }
+    });
+
+    video.srcObject = stream;
+
+    await new Promise(resolve => video.onloadedmetadata = resolve);
+    await video.play();
+
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+
+    stream.getTracks().forEach(track => track.stop());
+    video.remove();
+
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    throw err;
+  }
+}
+
+
+
+/*
 async function takeWebcamPicture(width = 640, height = 480, delayMs = 500) {
   try {
     const video = document.createElement('video');
@@ -225,6 +273,7 @@ async function takeWebcamPicture(width = 640, height = 480, delayMs = 500) {
     throw err;
   }
 }
+*/
 
 
 /*
