@@ -54,6 +54,31 @@ button {
   min-height: 20rem;
 }
 
+
+#camera {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+#preview {
+  width: 100%;
+  height: auto;
+  background: black;
+  display: none;
+}
+
+#countdown {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 64px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -67,9 +92,14 @@ button {
 <input id="file-input" type="file" accept="image/*" capture="environment" style="display: none;"/>
 
 or 
-<button id="camera">Use camera</button>
+<button id="camera-btn">Use camera</button>
 
 </p>
+
+<div id="camera">
+  <video id="preview" autoplay muted playsinline></video>
+  <div id="countdown"></div>
+</div>
 
 <div class="container">
   <div id="img-container"></div>
@@ -161,7 +191,86 @@ fileInput.addEventListener('change', (event) => {
   }
 });
 
-const cameraInput = document.getElementById('camera');
+
+let stream;
+
+async function startPreview({
+  videoEl,
+  width = 640,
+  height = 480,
+  facingMode = "environment" // environment or user
+}) {
+  document.getElementById('preview').style.display = 'block';
+
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      width,
+      height,
+      facingMode: { ideal: facingMode }
+    }
+  });
+
+  videoEl.srcObject = stream;
+  await videoEl.play();
+}
+
+function stopPreview() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+}
+
+async function countdown(seconds, el) {
+  for (let i = seconds; i > 0; i--) {
+    el.textContent = i;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  el.textContent = "";
+}
+
+function captureFrame(videoEl, width = 640, height = 480) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(videoEl, 0, 0, width, height);
+  return canvas.toDataURL("image/png");
+}
+
+const video = document.getElementById("preview");
+const countdownEl = document.getElementById("countdown");
+// const result = document.getElementById("result");
+const captureBtn = document.getElementById("camera-btn");
+
+
+captureBtn.onclick = async () => {
+  await startPreview({ videoEl: video });
+  captureBtn.disabled = true;
+
+  await countdown(3, countdownEl);
+
+  const imgSrc = captureFrame(video);
+  // result.src = image;
+
+  const img = document.createElement('img');
+  img.setAttribute('src', imgSrc);
+  img.style.width = '100%';
+  img.style.height = 'auto';
+
+  document.getElementById('preview').style.display = 'none';
+  clear('img-container');
+  clear('stat-container');
+
+
+  document.getElementById('img-container').append(img);
+  ocr(img.src);
+
+  stopPreview();
+  captureBtn.disabled = false;
+};
+
+/*
+const cameraInput = document.getElementById('camera-btn');
 cameraInput.addEventListener('click', (event) => {
   takeWebcamPicture(640, 480, 600, 'environment').then(dataURL => {
     console.log("Captured image:", dataURL);
@@ -225,7 +334,7 @@ async function takeWebcamPicture(
     throw err;
   }
 }
-
+*/
 
 
 /*
