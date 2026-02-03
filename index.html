@@ -8,22 +8,50 @@
 <link href="https://fonts.googleapis.com/css?family=Inconsolata&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/6.0.1/tesseract.min.js" integrity="sha512-x3WuOingc6Q+P7pb4dV+MFLvfjIzTzk+e/HZwSdeIZ5VT5PEA67LMn60Tp3G7cj4pYVbdsPF0zjFqafDt/gOnA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
+* {
+  box-sizing: border-box;
+}
 body {
   font-family: 'Inconsolata', monospace;
-  padding: 10px;
+  padding: 1rem;
+  margin: 0;
 }
 h4 {
   margin: 0;
 }
 
+button {
+  padding: 0.5rem;
+}
+
+.container {
+  display: grid;
+  grid-gap: 1rem;
+}
+
+/* single-column layout for mobile */
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* two-column layout for desktop */
+@media (min-width: 768px) {
+  .container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 #img-container {
   border: 1px solid #cccccc;
+  min-height: 20rem;
 }
 
 #stat-container {
-  margin-left: 10px;
   overflow-y: scroll;
   border: 1px solid #cccccc;
+  min-height: 20rem;
 }
 
 </style>
@@ -34,23 +62,24 @@ h4 {
   <br/>
   <a target="_blank" href="https://github.com/mwdchang/ocr-tesseract">https://github.com/mwdchang/ocr-tesseract</a>
 </h4>
-<p> Paste images/clipboards here to extract text. </p>
-<div style="display:flex; flex-direction: row">
+<p> Paste images/clipboards here to extract text. or 
+<button id="file-button"><label for="file-input">Upload file</label></button>
+<input id="file-input" type="file" accept="image/*" capture="environment" style="display: none;"/>
+
+or 
+<button id="camera">Use camera</button>
+
+</p>
+
+<div class="container">
   <div id="img-container"></div>
   <div id="stat-container"></div>
 </div>
 </body>
 <script type="module">
 
-const MAX = 475;
-
 const imgContainer = document.getElementById('img-container');
-imgContainer.style.width = `${MAX}px`;
-imgContainer.style.height = `${MAX}px`;
-
 const stat = document.getElementById('stat-container');
-stat.style.width = `${MAX}px`;
-stat.style.height = `${MAX}px`;
 
 async function ocr(imgData) {
 
@@ -77,18 +106,6 @@ function clear(id) {
     myNode.removeChild(myNode.firstChild);
   }
 }
-
-const getClipImageDimension = async (src) => {
-  return new Promise((resolve, reject) => {
-    let img = new Image();
-    img.onload = () => resolve({
-      height: img.height,
-      width: img.width
-    });
-    img.onerror = reject;
-    img.src = src;
-  })
-}
   
 // window.addEventListener('paste', ... or
 document.onpaste = async (event) => {
@@ -113,27 +130,201 @@ document.onpaste = async (event) => {
       clear('img-container');
       clear('stat-container');
 
-      // Create a temporary image to determine width and height
-      const dim = await getClipImageDimension(event.target.result);
-      let width = MAX;
-      let height = MAX;
-      if (dim.width > dim.height) {
-        width = MAX;
-        height = MAX * dim.height / dim.width;
-      } else {
-        height = MAX;
-        width = MAX * dim.width / dim.height;
-      }
-
       const img = document.createElement('img');
       img.setAttribute('src', event.target.result);
-      img.setAttribute('width', width);
-      img.setAttribute('height', height);
+      img.style.width = '100%';
+      img.style.height = 'auto';
       document.getElementById('img-container').append(img);
       ocr(img.src);
     };
     reader.readAsDataURL(blob);
   }
 }
+
+const fileInput = document.getElementById('file-input');
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      clear('img-container');
+      clear('stat-container');
+
+      const img = document.createElement('img');
+      img.setAttribute('src', e.target.result);
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      document.getElementById('img-container').append(img);
+      ocr(img.src);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+const cameraInput = document.getElementById('camera');
+cameraInput.addEventListener('click', (event) => {
+  takeWebcamPicture().then(dataURL => {
+    console.log("Captured image:", dataURL);
+
+    // Display the image
+    const img = document.createElement('img');
+    img.src = dataURL;
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    document.getElementById('img-container').append(img);
+    ocr(img.src);
+
+    // document.body.appendChild(img);
+  }).catch(err => {
+    console.error("Failed to capture image:", err);
+  });
+});
+
+
+async function takeWebcamPicture(width = 640, height = 480, delayMs = 500) {
+  try {
+    const video = document.createElement('video');
+    video.width = width;
+    video.height = height;
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.style.display = 'none';
+    document.body.appendChild(video);
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width, height }
+    });
+
+    video.srcObject = stream;
+
+    // Wait for metadata
+    await new Promise(resolve => {
+      video.onloadedmetadata = resolve;
+    });
+
+    // Ensure playback actually starts
+    await video.play();
+
+    // Extra delay to allow the camera to produce real frames
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, width, height);
+
+    // Cleanup
+    stream.getTracks().forEach(track => track.stop());
+    video.remove();
+
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    throw err;
+  }
+}
+
+
+/*
+async function takeWebcamPicture(width = 640, height = 480) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const video = document.createElement('video');
+      video.width = width;
+      video.height = height;
+      video.autoplay = true;
+      video.style.display = 'none';
+      document.body.appendChild(video);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width, height } });
+      video.srcObject = stream;
+
+      // Wait for video metadata to load
+      await new Promise((res) => video.onloadedmetadata = res);
+
+      // Wait for at least one frame to be available
+      await new Promise((res) => requestAnimationFrame(res));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+
+      context.drawImage(video, 0, 0, width, height);
+
+      // Stop the webcam
+      stream.getTracks().forEach(track => track.stop());
+      video.remove();
+
+      const dataURL = canvas.toDataURL('image/png');
+      resolve(dataURL);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+*/
+
+
+/*
+async function takeWebcamPicture(width = 640, height = 480) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Create video element (hidden)
+      const video = document.createElement('video');
+      video.width = width;
+      video.height = height;
+      video.autoplay = true;
+      video.style.display = 'none';
+      document.body.appendChild(video);
+
+      // Request webcam access
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width, height } });
+      video.srcObject = stream;
+
+      // Wait for video to load metadata
+      await new Promise((res) => video.onloadedmetadata = res);
+
+      // Create canvas to capture image
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+
+      // Draw the current frame from video
+      context.drawImage(video, 0, 0, width, height);
+
+      // Stop webcam to free resources
+      stream.getTracks().forEach(track => track.stop());
+      video.remove();
+
+      // Return the image as dataURL
+      const dataURL = canvas.toDataURL('image/png');
+      resolve(dataURL);
+
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+*/
+
+/*
+const getClipImageDimension = async (src) => {
+  return new Promise((resolve, reject) => {
+    let img = new Image();
+    img.onload = () => resolve({
+      height: img.height,
+      width: img.width
+    });
+    img.onerror = reject;
+    img.src = src;
+  })
+}
+const dim = await getClipImageDimension(event.target.result);
+*/
+
 </script>
 </html>
